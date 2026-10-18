@@ -1,98 +1,244 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { StatusBar } from 'expo-status-bar';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const sports = [
+  { emoji: '⚽', name: 'Football' },
+  { emoji: '🎾', name: 'Padel' },
+  { emoji: '🏃', name: 'Running' },
+  { emoji: '🏋️', name: 'Fitness' },
+];
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.container}>
+      <StatusBar style="dark" />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>SALAM 👋</Text>
+            <Text style={styles.title}>SportMates</Text>
+            <Text style={styles.subtitle}>
+              L9a les partenaires dyal sport !
+            </Text>
+          </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>S</Text>
+          </View>
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <View style={styles.banner}>
+          <Text style={styles.bannerLabel}>SPORT • FRIENDS • FUN</Text>
+          <Text style={styles.bannerTitle}>
+            Ma tl3bch بوحدك !
+          </Text>
+          <Text style={styles.bannerText}>
+            L9a chi wa7d ypartagi m3ak nafs passion.
+          </Text>
+
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => alert('Les activités arrivent bientôt !')}
+          >
+            <Text style={styles.primaryButtonText}>
+              Découvrir les activités →
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Choisis ton sport</Text>
+          <Text style={styles.seeAll}>Voir tout</Text>
+        </View>
+
+        <View style={styles.sportsGrid}>
+          {sports.map((sport) => (
+            <Pressable
+              key={sport.name}
+              style={styles.sportCard}
+              onPress={() => alert(`${sport.name} bientôt disponible !`)}
+            >
+              <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+              <Text style={styles.sportName}>{sport.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Près de chez toi</Text>
+        </View>
+
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyEmoji}>📍</Text>
+          <Text style={styles.emptyTitle}>Sport à Fès</Text>
+          <Text style={styles.emptyText}>
+            Les matchs et les activités près de toi
+            apparaîtront ici.
+          </Text>
+        </View>
+
+        <Text style={styles.footer}>
+          SportMates • Bouge avec ta communauté 💚
+        </Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#F7F8F4',
+    paddingTop: 55,
+  },
+  header: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: 22,
+    marginBottom: 25,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  greeting: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#65816D',
+    letterSpacing: 2,
   },
   title: {
+    fontSize: 29,
+    fontWeight: '800',
+    color: '#183C2B',
+    marginTop: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#788078',
+    marginTop: 5,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#DDEBDD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#24543A',
+  },
+  banner: {
+    marginHorizontal: 20,
+    padding: 22,
+    borderRadius: 25,
+    backgroundColor: '#20583D',
+    marginBottom: 30,
+  },
+  bannerLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#C5E8C8',
+    letterSpacing: 2,
+  },
+  bannerTitle: {
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 13,
+  },
+  bannerText: {
+    color: '#E1EDE3',
+    fontSize: 13,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  primaryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#D7F379',
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderRadius: 13,
+    marginTop: 20,
+  },
+  primaryButtonText: {
+    color: '#1B3C29',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 22,
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#20392A',
+  },
+  seeAll: {
+    fontSize: 12,
+    color: '#66806D',
+    fontWeight: '600',
+  },
+  sportsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 28,
+  },
+  sportCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E9EDE7',
+  },
+  sportEmoji: {
+    fontSize: 30,
+    marginBottom: 12,
+  },
+  sportName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#294333',
+  },
+  emptyCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#E9EDE7',
+  },
+  emptyEmoji: {
+    fontSize: 27,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#294333',
+    marginTop: 10,
+  },
+  emptyText: {
+    color: '#7A837C',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 7,
+  },
+  footer: {
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    color: '#89938B',
+    fontSize: 11,
+    marginTop: 25,
+    marginBottom: 25,
   },
 });
