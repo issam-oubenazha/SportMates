@@ -2,6 +2,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
@@ -10,20 +12,43 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!email.trim() || !password.trim()) {
-      alert('Veuillez remplir tous les champs.');
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Champs obligatoires', 'Veuillez remplir tous les champs.');
       return;
     }
 
-    // Démonstration uniquement : pas encore de vraie authentification.
-    router.replace('/');
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (error) {
+        Alert.alert('Connexion impossible', error.message);
+        return;
+      }
+
+      router.replace('/');
+    } catch {
+      Alert.alert(
+        'Erreur',
+        'Impossible de contacter le serveur. Vérifie ta connexion.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,6 +58,7 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <Text style={styles.logo}>SportMates ⚡</Text>
+
         <Text style={styles.title}>Bon retour !</Text>
         <Text style={styles.subtitle}>
           Connecte-toi et trouve tes partenaires sportifs.
@@ -45,8 +71,10 @@ export default function LoginScreen() {
           placeholderTextColor="#8B95A5"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
           value={email}
           onChangeText={setEmail}
+          editable={!loading}
         />
 
         <Text style={styles.label}>Mot de passe</Text>
@@ -57,17 +85,20 @@ export default function LoginScreen() {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          editable={!loading}
+          onSubmitEditing={handleLogin}
         />
 
         <TouchableOpacity
-          style={styles.forgotButton}
-          onPress={() => alert('La récupération du mot de passe sera ajoutée plus tard.')}
+          style={[styles.loginButton, loading && styles.disabledButton]}
+          onPress={handleLogin}
+          disabled={loading}
         >
-          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Se connecter</Text>
+          {loading ? (
+            <ActivityIndicator color="#0B1220" />
+          ) : (
+            <Text style={styles.loginButtonText}>Se connecter</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.signupRow}>
@@ -131,20 +162,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 20,
   },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotText: {
-    color: '#7CFF6B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
   loginButton: {
     backgroundColor: '#7CFF6B',
     borderRadius: 14,
     paddingVertical: 17,
     alignItems: 'center',
+    marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   loginButtonText: {
     color: '#0B1220',
