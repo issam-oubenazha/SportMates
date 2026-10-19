@@ -2,6 +2,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -12,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -20,20 +22,42 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = () => {
-    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Champs obligatoires', 'Veuillez remplir tous les champs.');
+  const showMessage = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !password ||
+      !confirmPassword
+    ) {
+      showMessage(
+        'Champs obligatoires',
+        'Veuillez remplir tous les champs.'
+      );
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      Alert.alert('E-mail invalide', 'Veuillez vérifier votre adresse e-mail.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      showMessage(
+        'E-mail invalide',
+        'Veuillez vérifier votre adresse e-mail.'
+      );
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert(
+      showMessage(
         'Mot de passe faible',
         'Le mot de passe doit contenir au moins 8 caractères.'
       );
@@ -41,15 +65,56 @@ export default function SignupScreen() {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+      showMessage(
+        'Erreur',
+        'Les mots de passe ne correspondent pas.'
+      );
       return;
     }
 
-    Alert.alert(
-      'Interface prête',
-      'Le formulaire fonctionne, mais la création du compte nécessite encore un backend.',
-      [{ text: 'OK', onPress: () => router.replace('/login') }]
-    );
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        showMessage('Inscription impossible', error.message);
+        return;
+      }
+
+      if (data.session) {
+        showMessage(
+          'Bienvenue sur SportMates !',
+          'Votre compte a été créé avec succès.'
+        );
+        router.replace('/');
+        return;
+      }
+
+      showMessage(
+        'Vérifiez votre e-mail',
+        'Votre demande d’inscription a été envoyée. Si la confirmation par e-mail est activée, ouvrez le message reçu pour confirmer votre compte avant de vous connecter.'
+      );
+
+      router.replace('/login');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Une erreur inattendue est survenue.';
+
+      showMessage('Erreur', message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,7 +129,10 @@ export default function SignupScreen() {
         <View style={styles.content}>
           <Text style={styles.logo}>SportMates ⚡</Text>
 
-          <Text style={styles.title}>Rejoins la communauté !</Text>
+          <Text style={styles.title}>
+            Rejoins la communauté !
+          </Text>
+
           <Text style={styles.subtitle}>
             Crée ton compte et trouve tes prochains partenaires sportifs.
           </Text>
@@ -101,7 +169,9 @@ export default function SignupScreen() {
             secureTextEntry
           />
 
-          <Text style={styles.label}>Confirmer le mot de passe</Text>
+          <Text style={styles.label}>
+            Confirmer le mot de passe
+          </Text>
           <TextInput
             style={styles.input}
             placeholder="Retape ton mot de passe"
@@ -112,14 +182,27 @@ export default function SignupScreen() {
           />
 
           <TouchableOpacity
-            style={styles.signupButton}
+            style={[
+              styles.signupButton,
+              loading && styles.disabledButton,
+            ]}
             onPress={handleSignup}
+            disabled={loading}
           >
-            <Text style={styles.signupButtonText}>Créer mon compte</Text>
+            {loading ? (
+              <ActivityIndicator color="#0B1220" />
+            ) : (
+              <Text style={styles.signupButtonText}>
+                Créer mon compte
+              </Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Tu as déjà un compte ? </Text>
+            <Text style={styles.loginText}>
+              Tu as déjà un compte ?{' '}
+            </Text>
+
             <Text
               style={styles.loginLink}
               onPress={() => router.push('/login')}
@@ -190,6 +273,9 @@ const styles = StyleSheet.create({
     paddingVertical: 17,
     alignItems: 'center',
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   signupButtonText: {
     color: '#0B1220',
