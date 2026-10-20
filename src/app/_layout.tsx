@@ -50,6 +50,7 @@ function AuthNavigation() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="player/[id]" options={{ headerShown: false }}/>
     </Stack>
   );
 }
