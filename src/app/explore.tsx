@@ -1,180 +1,556 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useAuth } from '../contexts/auth-context';
+import { supabase } from '../lib/supabase';
+type Player = {
+  id: string;
+  full_name: string;
+  city: string;
+  favorite_sport: string;
+  bio: string;
+  avatar_url: string | null;
+};
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
+const SPORTS = [
+  'Tous',
+  'Football',
+  'Basketball',
+  'Tennis',
+  'Running',
+  'Fitness',
+  'Natation',
+  'Cyclisme',
+  'Volleyball',
+];
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+export default function ExploreScreen() {
+  const { session } = useAuth();
+  const router = useRouter();
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedSport, setSelectedSport] = useState('Tous');
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const loadPlayers = useCallback(async () => {
+    if (!session?.user) {
+      setPlayers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, city, favorite_sport, bio, avatar_url')
+        .neq('id', session.user.id)
+        .order('full_name', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setPlayers((data ?? []) as Player[]);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de charger les joueurs.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    loadPlayers();
+  }, [loadPlayers]);
+
+  const filteredPlayers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return players.filter((player) => {
+      const matchesSearch =
+        !query ||
+        (player.full_name ?? '').toLowerCase().includes(query) ||
+        (player.city ?? '').toLowerCase().includes(query) ||
+        (player.favorite_sport ?? '').toLowerCase().includes(query);
+
+      const matchesSport =
+        selectedSport === 'Tous' ||
+        player.favorite_sport === selectedSport;
+
+      return matchesSearch && matchesSport;
+    });
+  }, [players, search, selectedSport]);
 
   return (
     <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.logo}>
+            SportMates <Text style={styles.lightning}>⚡</Text>
+          </Text>
+          <Text style={styles.subtitle}>Trouve ton prochain partenaire.</Text>
+        </View>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Actualiser les joueurs"
+          onPress={loadPlayers}
+          style={styles.refreshButton}
+        >
+          <Text style={styles.refreshText}>↻</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.hero}>
+        <Text style={styles.eyebrow}>LA COMMUNAUTÉ SPORTIVE</Text>
+        <Text style={styles.heroTitle}>
+          Le sport, c’est mieux{'\n'}à plusieurs.
+        </Text>
+        <Text style={styles.heroDescription}>
+          Découvre des sportifs, trouve des partenaires et partage ta passion.
+        </Text>
+      </View>
+
+      <Text style={styles.sectionTitle}>Trouver des sportifs</Text>
+
+      <View style={styles.searchBox}>
+        <Text style={styles.searchIcon}>⌕</Text>
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Nom, ville ou sport..."
+          placeholderTextColor="#8994A7"
+          style={styles.searchInput}
+          autoCapitalize="none"
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch('')}>
+            <Text style={styles.clearText}>✕</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <Text style={styles.filterLabel}>SPORT PRÉFÉRÉ</Text>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sportList}
+      >
+        {SPORTS.map((sport) => {
+          const active = selectedSport === sport;
+
+          return (
+            <Pressable
+              key={sport}
+              onPress={() => setSelectedSport(sport)}
+              style={[styles.sportChip, active && styles.activeSportChip]}
+            >
+              <Text
+                style={[
+                  styles.sportChipText,
+                  active && styles.activeSportChipText,
+                ]}
+              >
+                {sport}
+              </Text>
             </Pressable>
-          </ExternalLink>
-        </ThemedView>
+          );
+        })}
+      </ScrollView>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+      <View style={styles.resultsHeader}>
+        <Text style={styles.sectionTitle}>Partenaires sportifs</Text>
+        {!loading && (
+          <Text style={styles.resultCount}>
+            {filteredPlayers.length} résultat(s)
+          </Text>
+        )}
+      </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+      {loading ? (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color="#7CFF6B" />
+          <Text style={styles.stateText}>Chargement des sportifs...</Text>
+        </View>
+      ) : errorMessage ? (
+        <View style={styles.stateCard}>
+          <Text style={styles.stateEmoji}>⚠️</Text>
+          <Text style={styles.stateTitle}>Chargement impossible</Text>
+          <Text style={styles.stateText}>{errorMessage}</Text>
+          <Pressable style={styles.retryButton} onPress={loadPlayers}>
+            <Text style={styles.retryText}>Réessayer</Text>
+          </Pressable>
+        </View>
+      ) : filteredPlayers.length === 0 ? (
+        <View style={styles.stateCard}>
+          <Text style={styles.stateEmoji}>🏃</Text>
+          <Text style={styles.stateTitle}>
+            {players.length === 0
+              ? 'La communauté démarre !'
+              : 'Aucun résultat'}
+          </Text>
+          <Text style={styles.stateText}>
+            {players.length === 0
+              ? 'Aucun autre profil disponible pour le moment. Invite tes amis à rejoindre SportMates !'
+              : 'Essaie un autre nom, une autre ville ou un autre sport.'}
+          </Text>
+          {(search.length > 0 || selectedSport !== 'Tous') && (
+            <Pressable
+              onPress={() => {
+                setSearch('');
+                setSelectedSport('Tous');
+              }}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryText}>Effacer les filtres</Text>
+            </Pressable>
+          )}
+        </View>
+      ) : (
+        <View style={styles.playerList}>
+          {filteredPlayers.map((player) => {
+            const initial = (player.full_name || '?')
+              .trim()
+              .charAt(0)
+              .toUpperCase();
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+            return (
+                    <Pressable
+                      key={player.id}
+                      style={styles.playerCard}
+                      onPress={() =>
+                      router.push({
+                        pathname: '/player/[id]',
+                        params: { id: player.id },
+                      })
+                    }
+                  >
+                <View style={styles.playerTop}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initial || '?'}</Text>
+                  </View>
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+                  <View style={styles.playerInfo}>
+                    <Text style={styles.playerName} numberOfLines={1}>
+                      {player.full_name || 'Sportif'}
+                    </Text>
+                    <Text style={styles.playerCity}>
+                      📍 {player.city?.trim() || 'Ville non renseignée'}
+                    </Text>
+                  </View>
 
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
+                  <View style={styles.onlineDot} />
+                </View>
+
+                <View style={styles.sportBadge}>
+                  <Text style={styles.sportBadgeText}>
+                    ⚡ {player.favorite_sport || 'Sport non renseigné'}
+                  </Text>
+                </View>
+
+                <Text style={styles.playerBio} numberOfLines={3}>
+                  {player.bio?.trim() ||
+                    'Ce sportif n’a pas encore ajouté de description.'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      <Text style={styles.footer}>
+        SPORTMATES ⚡ · Bouge ensemble.
+      </Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
+  screen: {
     flex: 1,
+    backgroundColor: '#0B1220',
   },
-  contentContainer: {
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 120,
+    maxWidth: 850,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  header: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 28,
+  },
+  logo: {
+    color: '#FFFFFF',
+    fontSize: 23,
+    fontWeight: '900',
+  },
+  lightning: {
+    color: '#7CFF6B',
+  },
+  subtitle: {
+    color: '#9BA7BA',
+    fontSize: 13,
+    marginTop: 5,
+  },
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: '#172235',
+    borderWidth: 1,
+    borderColor: '#29364A',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
+  refreshText: {
+    color: '#7CFF6B',
+    fontSize: 30,
   },
-  titleContainer: {
-    gap: Spacing.three,
+  hero: {
+    backgroundColor: '#152638',
+    borderRadius: 24,
+    padding: 23,
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: '#294238',
+  },
+  eyebrow: {
+    color: '#7CFF6B',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 14,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 37,
+  },
+  heroDescription: {
+    color: '#B5C0CE',
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 12,
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  searchBox: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    backgroundColor: '#141F30',
+    borderWidth: 1,
+    borderColor: '#29364A',
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    height: 54,
+    marginTop: 16,
+    marginBottom: 23,
   },
-  centerText: {
+  searchIcon: {
+    color: '#7CFF6B',
+    fontSize: 27,
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    outlineStyle: 'none',
+  } as any,
+  clearText: {
+    color: '#A7B2C2',
+    padding: 6,
+  },
+  filterLabel: {
+    color: '#8997AA',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    marginBottom: 12,
+  },
+  sportList: {
+    gap: 8,
+    paddingBottom: 26,
+  },
+  sportChip: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#344156',
+    backgroundColor: '#141F30',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+  },
+  activeSportChip: {
+    backgroundColor: '#7CFF6B',
+    borderColor: '#7CFF6B',
+  },
+  sportChipText: {
+    color: '#C1CBD8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeSportChipText: {
+    color: '#0B1220',
+    fontWeight: '900',
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resultCount: {
+    color: '#9BA7BA',
+    fontSize: 11,
+  },
+  playerList: {
+    gap: 14,
+  },
+  playerCard: {
+    backgroundColor: '#141F30',
+    borderWidth: 1,
+    borderColor: '#263449',
+    borderRadius: 20,
+    padding: 17,
+  },
+  playerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    backgroundColor: '#263D34',
+    borderWidth: 1,
+    borderColor: '#456B4B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#7CFF6B',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  playerInfo: {
+    flex: 1,
+    marginLeft: 13,
+  },
+  playerName: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  playerCity: {
+    color: '#9BA7BA',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#7CFF6B',
+  },
+  sportBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    backgroundColor: '#20372E',
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  sportBadgeText: {
+    color: '#7CFF6B',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  playerBio: {
+    color: '#AEB9C9',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 13,
+  },
+  stateContainer: {
+    paddingVertical: 35,
+    alignItems: 'center',
+    gap: 13,
+  },
+  stateCard: {
+    alignItems: 'center',
+    backgroundColor: '#141F30',
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
+    borderWidth: 1,
+    borderColor: '#263449',
+  },
+  stateEmoji: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  stateTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
     textAlign: 'center',
   },
-  pressed: {
-    opacity: 0.7,
+  stateText: {
+    color: '#AEB9C9',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 10,
   },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
+  retryButton: {
+    backgroundColor: '#7CFF6B',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
+    marginTop: 18,
   },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+  retryText: {
+    color: '#0B1220',
+    fontWeight: '800',
+    fontSize: 12,
   },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+  footer: {
+    color: '#68778C',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 35,
+    letterSpacing: 1.2,
   },
 });

@@ -1,6 +1,13 @@
 
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 const sports = [
   { emoji: '⚽', name: 'Football' },
@@ -10,11 +17,14 @@ const sports = [
 ];
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>SALAM 👋</Text>
@@ -24,33 +34,67 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.avatar}>
+          <Pressable
+            style={styles.avatar}
+            onPress={() => router.push('/profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Ouvrir mon profil"
+          >
             <Text style={styles.avatarText}>S</Text>
-          </View>
+          </Pressable>
         </View>
 
+        {/* Bouton Mon profil */}
+        <Pressable
+          style={styles.profileButton}
+          onPress={() => router.push('/profile')}
+          accessibilityRole="button"
+        >
+          <View style={styles.profileIcon}>
+            <Text style={styles.profileIconText}>👤</Text>
+          </View>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileButtonTitle}>Mon profil</Text>
+            <Text style={styles.profileButtonSubtitle}>
+              Modifier mes informations personnelles
+            </Text>
+          </View>
+
+          <Text style={styles.profileArrow}>›</Text>
+        </Pressable>
+
+        {/* Banner */}
         <View style={styles.banner}>
-          <Text style={styles.bannerLabel}>SPORT • FRIENDS • FUN</Text>
+          <Text style={styles.bannerLabel}>
+            SPORT • FRIENDS • FUN
+          </Text>
+
           <Text style={styles.bannerTitle}>
             Ma tl3bch بوحدك !
           </Text>
+
           <Text style={styles.bannerText}>
             L9a chi wa7d ypartagi m3ak nafs passion.
           </Text>
 
           <Pressable
             style={styles.primaryButton}
-            onPress={() => alert('Les activités arrivent bientôt !')}
+            onPress={() => router.push('/explore')}
           >
             <Text style={styles.primaryButtonText}>
-              Découvrir les activités →
+              Découvrir les sportifs →
             </Text>
           </Pressable>
         </View>
 
+        {/* Sports */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Choisis ton sport</Text>
-          <Text style={styles.seeAll}>Voir tout</Text>
+
+          <Pressable onPress={() => router.push('/explore')}>
+            <Text style={styles.seeAll}>Voir tout</Text>
+          </Pressable>
         </View>
 
         <View style={styles.sportsGrid}>
@@ -58,25 +102,40 @@ export default function HomeScreen() {
             <Pressable
               key={sport.name}
               style={styles.sportCard}
-              onPress={() => alert(`${sport.name} bientôt disponible !`)}
+              onPress={() => router.push('/explore')}
             >
               <Text style={styles.sportEmoji}>{sport.emoji}</Text>
               <Text style={styles.sportName}>{sport.name}</Text>
+              <Text style={styles.sportHint}>
+                Découvrir les sportifs →
+              </Text>
             </Pressable>
           ))}
         </View>
 
+        {/* Activités à proximité */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Près de chez toi</Text>
         </View>
 
         <View style={styles.emptyCard}>
           <Text style={styles.emptyEmoji}>📍</Text>
+
           <Text style={styles.emptyTitle}>Sport à Fès</Text>
+
           <Text style={styles.emptyText}>
             Les matchs et les activités près de toi
             apparaîtront ici.
           </Text>
+
+          <Pressable
+            style={styles.discoverButton}
+            onPress={() => router.push('/explore')}
+          >
+            <Text style={styles.discoverButtonText}>
+              Trouver des partenaires
+            </Text>
+          </Pressable>
         </View>
 
         <Text style={styles.footer}>
@@ -93,6 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8F4',
     paddingTop: 55,
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -100,23 +160,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     marginBottom: 25,
   },
+
   greeting: {
     fontSize: 12,
     fontWeight: '700',
     color: '#65816D',
     letterSpacing: 2,
   },
+
   title: {
     fontSize: 29,
     fontWeight: '800',
     color: '#183C2B',
     marginTop: 4,
   },
+
   subtitle: {
     fontSize: 13,
     color: '#788078',
     marginTop: 5,
   },
+
   avatar: {
     width: 48,
     height: 48,
@@ -125,11 +189,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   avatarText: {
     fontSize: 22,
     fontWeight: '800',
     color: '#24543A',
   },
+
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E9EDE7',
+  },
+
+  profileIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#DDEBDD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  profileIconText: {
+    fontSize: 20,
+  },
+
+  profileInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  profileButtonTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#20392A',
+  },
+
+  profileButtonSubtitle: {
+    fontSize: 11,
+    color: '#788078',
+    marginTop: 4,
+  },
+
+  profileArrow: {
+    fontSize: 28,
+    color: '#20583D',
+    marginLeft: 8,
+  },
+
   banner: {
     marginHorizontal: 20,
     padding: 22,
@@ -137,24 +251,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#20583D',
     marginBottom: 30,
   },
+
   bannerLabel: {
     fontSize: 10,
     fontWeight: '800',
     color: '#C5E8C8',
     letterSpacing: 2,
   },
+
   bannerTitle: {
     fontSize: 27,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: 13,
   },
+
   bannerText: {
     color: '#E1EDE3',
     fontSize: 13,
     lineHeight: 21,
     marginTop: 8,
   },
+
   primaryButton: {
     alignSelf: 'flex-start',
     backgroundColor: '#D7F379',
@@ -163,11 +281,13 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     marginTop: 20,
   },
+
   primaryButtonText: {
     color: '#1B3C29',
     fontSize: 12,
     fontWeight: '800',
   },
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -175,16 +295,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginBottom: 15,
   },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#20392A',
   },
+
   seeAll: {
     fontSize: 12,
     color: '#66806D',
     fontWeight: '600',
   },
+
   sportsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -192,6 +315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 28,
   },
+
   sportCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
@@ -202,15 +326,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E9EDE7',
   },
+
   sportEmoji: {
     fontSize: 30,
     marginBottom: 12,
   },
+
   sportName: {
     fontSize: 15,
     fontWeight: '700',
     color: '#294333',
   },
+
+  sportHint: {
+    fontSize: 10,
+    color: '#66806D',
+    marginTop: 8,
+  },
+
   emptyCard: {
     marginHorizontal: 20,
     backgroundColor: '#FFFFFF',
@@ -219,21 +352,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E9EDE7',
   },
+
   emptyEmoji: {
     fontSize: 27,
   },
+
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#294333',
     marginTop: 10,
   },
+
   emptyText: {
     color: '#7A837C',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 7,
   },
+
+  discoverButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#DDEBDD',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+
+  discoverButtonText: {
+    color: '#20583D',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+
   footer: {
     textAlign: 'center',
     color: '#89938B',
