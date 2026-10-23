@@ -18,6 +18,10 @@ const sports = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const goToActivities = () => router.push('/activities');
+  const goToCreateActivity = () => router.push('/create-activity');
+  const goToExplore = () => router.push('/explore');
+  const goToProfile = () => router.push('/profile');
 
   return (
     <View style={styles.container}>
@@ -34,20 +38,17 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.avatar}>
-
           <Pressable
             style={styles.avatar}
-            onPress={() => router.push('/profile')}
+            onPress={goToProfile}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir mon profil"
           >
-
             <Text style={styles.avatarText}>S</Text>
           </Pressable>
         </View>
 
-         <View style={styles.banner}>
+        <View style={styles.banner}>
           <Text style={styles.bannerLabel}>
             SPORT • FRIENDS • FUN
           </Text>
@@ -62,7 +63,7 @@ export default function HomeScreen() {
 
           <Pressable
             style={styles.primaryButton}
-            onPress={() => router.push('/explore')}
+            onPress={goToExplore}
           >
             <Text style={styles.primaryButtonText}>
               Découvrir les sportifs →
@@ -70,15 +71,11 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Choisis ton sport</Text>
-          <Text style={styles.seeAll}>Voir tout</Text>
-
         {/* Sports */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Choisis ton sport</Text>
 
-          <Pressable onPress={() => router.push('/explore')}>
+          <Pressable onPress={goToExplore}>
             <Text style={styles.seeAll}>Voir tout</Text>
           </Pressable>
 
@@ -89,22 +86,46 @@ export default function HomeScreen() {
             <Pressable
               key={sport.name}
               style={styles.sportCard}
-              onPress={() => alert(`${sport.name} bientôt disponible !`)}
-            >
-              <Text style={styles.sportEmoji}>{sport.emoji}</Text>
-              <Text style={styles.sportName}>{sport.name}</Text>
-
-              onPress={() => router.push('/explore')}
+              onPress={goToExplore}
             >
               <Text style={styles.sportEmoji}>{sport.emoji}</Text>
               <Text style={styles.sportName}>{sport.name}</Text>
               <Text style={styles.sportHint}>
                 Découvrir les sportifs →
               </Text>
-
             </Pressable>
           ))}
         </View>
+
+        <Pressable
+          style={styles.profileButton}
+          onPress={goToActivities}
+          accessibilityRole="button"
+        >
+          <Text style={styles.profileIcon}>🏟️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Toutes les activités</Text>
+            <Text style={styles.cardSubtitle}>
+              Découvre les matchs disponibles
+            </Text>
+          </View>
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.profileButton}
+          onPress={goToCreateActivity}
+          accessibilityRole="button"
+        >
+          <Text style={styles.profileIcon}>📅</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Créer une activité</Text>
+            <Text style={styles.cardSubtitle}>
+              Organise un match près de chez toi
+            </Text>
+          </View>
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
 
         {/* Activités à proximité */}
         <View style={styles.sectionHeader}>
@@ -125,7 +146,7 @@ export default function HomeScreen() {
 
           <Pressable
             style={styles.discoverButton}
-            onPress={() => router.push('/explore')}
+            onPress={goToExplore}
           >
             <Text style={styles.discoverButtonText}>
               Trouver des partenaires
