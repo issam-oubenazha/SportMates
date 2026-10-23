@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../contexts/auth-context';
 import { supabase } from '../lib/supabase';
 
-const SPORTS = ['Football', 'Padel', 'Running', 'Fitness'];
+const SPORTS = ['Football', 'Padel', 'Running', 'Gym'];
 
 export default function CreateActivityScreen() {
   const router = useRouter();

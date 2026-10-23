@@ -1,4 +1,5 @@
 
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,8 +10,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
 
+import { useAuth } from '../contexts/auth-context';
 import { supabase } from '../lib/supabase';
 
 type SportActivity = {
@@ -23,6 +24,7 @@ type SportActivity = {
   activity_date: string;
   max_participants: number;
   description: string;
+  status: 'open' | 'cancelled' | 'completed';
 };
 
 type PlayerProfile = {
@@ -30,11 +32,60 @@ type PlayerProfile = {
   full_name: string;
 };
 
+type ActivityParticipant = {
+  activity_id: string;
+  user_id: string;
+};
+
+type ActivityList = 'all' | 'mine';
+
+function getJoinErrorMessage(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return 'Impossible de rejoindre cette activité. Réessayez.';
+  }
+
+  const supabaseError = error as {
+    code?: unknown;
+    message?: unknown;
+  };
+
+  if (supabaseError.code === '23505') {
+    return 'Vous êtes déjà inscrit à cette activité.';
+  }
+
+  if (supabaseError.code === '42501') {
+    return 'Supabase a refusé cette inscription. Vérifiez la politique RLS autorisant chaque utilisateur à s’inscrire avec son propre user_id.';
+  }
+
+  return typeof supabaseError.message === 'string'
+    ? supabaseError.message
+    : 'Impossible de rejoindre cette activité. Réessayez.';
+}
+
 export default function ActivitiesScreen() {
   const router = useRouter();
+  const { session } = useAuth();
+  const userId = session?.user.id;
 
   const [activities, setActivities] = useState<SportActivity[]>([]);
   const [organizers, setOrganizers] = useState<Record<string, string>>({});
+  const [participantCounts, setParticipantCounts] = useState<
+    Record<string, number>
+  >({});
+  const [joinedActivities, setJoinedActivities] = useState<
+    Record<string, boolean>
+  >({});
+  const [activityList, setActivityList] = useState<ActivityList>('all');
+  const [updatingActivityId, setUpdatingActivityId] = useState<string | null>(
+    null
+  );
+  const [joinFeedback, setJoinFeedback] = useState<
+    Record<string, { type: 'success' | 'error'; message: string }>
+  >({});
+  const [notice, setNotice] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -43,18 +94,100 @@ export default function ActivitiesScreen() {
     setErrorMessage('');
 
     try {
+      const activityColumns =
+        'id, organizer_id, title, sport, city, location, activity_date, max_participants, description, status';
       const { data, error } = await supabase
         .from('activities')
-        .select(
-          'id, organizer_id, title, sport, city, location, activity_date, max_participants, description'
-        )
+        .select(activityColumns)
         .gte('activity_date', new Date().toISOString())
+        .eq('status', 'open')
         .order('activity_date', { ascending: true });
 
       if (error) throw error;
 
-      const rows = (data ?? []) as SportActivity[];
+      const currentRows = (data ?? []) as SportActivity[];
+      let joinedRows: SportActivity[] = [];
+      let joined: Record<string, boolean> = {};
+
+      if (userId) {
+        const { data: memberships, error: membershipsError } = await supabase
+          .from('activity_participants')
+          .select('activity_id, user_id')
+          .eq('user_id', userId);
+
+        if (membershipsError) throw membershipsError;
+
+        const ownMemberships = (memberships ?? []) as ActivityParticipant[];
+        joined = Object.fromEntries(
+          ownMemberships.map((membership) => [membership.activity_id, true])
+        );
+        const joinedActivityIds = [
+          ...new Set(ownMemberships.map((membership) => membership.activity_id)),
+        ];
+
+        if (joinedActivityIds.length > 0) {
+          const { data: joinedActivityRows, error: joinedActivitiesError } =
+            await supabase
+              .from('activities')
+              .select(activityColumns)
+              .in('id', joinedActivityIds)
+              .order('activity_date', { ascending: true });
+
+          if (joinedActivitiesError) throw joinedActivitiesError;
+          joinedRows = (joinedActivityRows ?? []) as SportActivity[];
+        }
+      }
+
+      const rowsById = new Map<string, SportActivity>();
+      [...currentRows, ...joinedRows].forEach((activity) => {
+        rowsById.set(activity.id, activity);
+      });
+      const rows = [...rowsById.values()];
       setActivities(rows);
+
+      const activityIds = rows.map((activity) => activity.id);
+      if (activityIds.length > 0) {
+        const { data: participants, error: participantsError } = await supabase
+          .from('activity_participants')
+          .select('activity_id, user_id')
+          .in('activity_id', activityIds);
+
+        if (participantsError) throw participantsError;
+
+        const participantIdsByActivity: Record<string, Set<string>> = {};
+        rows.forEach((activity) => {
+          participantIdsByActivity[activity.id] = new Set([
+            activity.organizer_id,
+          ]);
+        });
+
+        ((participants ?? []) as ActivityParticipant[]).forEach(
+          (participant) => {
+            participantIdsByActivity[participant.activity_id]?.add(
+              participant.user_id
+            );
+          }
+        );
+
+        const counts: Record<string, number> = {};
+        Object.entries(participantIdsByActivity).forEach(
+          ([activityId, participantIds]) => {
+            counts[activityId] = participantIds.size;
+          }
+        );
+
+        setParticipantCounts(counts);
+      } else {
+        setParticipantCounts({});
+      }
+      setJoinedActivities(
+        Object.fromEntries(
+          Object.entries(joined).filter(([activityId]) => {
+            const activity = rowsById.get(activityId);
+            return activity && activity.organizer_id !== userId;
+          })
+        )
+      );
 
       const organizerIds = [
         ...new Set(rows.map((activity) => activity.organizer_id)),
@@ -87,7 +220,7 @@ export default function ActivitiesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -97,8 +230,199 @@ export default function ActivitiesScreen() {
 
   const refresh = () => {
     setRefreshing(true);
+    setNotice(null);
     void loadActivities();
   };
+
+  const joinActivity = async (activity: SportActivity) => {
+    if (!userId) {
+      setJoinFeedback((current) => ({
+        ...current,
+        [activity.id]: {
+          type: 'error',
+          message: 'Connectez-vous pour rejoindre cette activité.',
+        },
+      }));
+      return;
+    }
+
+    if (activity.organizer_id === userId) {
+      setJoinFeedback((current) => ({
+        ...current,
+        [activity.id]: {
+          type: 'error',
+          message: 'Vous ne pouvez pas rejoindre votre propre activité.',
+        },
+      }));
+      return;
+    }
+
+    setNotice(null);
+    setUpdatingActivityId(activity.id);
+    setJoinFeedback((current) => {
+      const next = { ...current };
+      delete next[activity.id];
+      return next;
+    });
+
+    try {
+      const { data: existingParticipation, error: existingError } =
+        await supabase
+          .from('activity_participants')
+          .select('activity_id')
+          .eq('activity_id', activity.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existingError) throw existingError;
+
+      if (existingParticipation) {
+        setJoinedActivities((current) => ({
+          ...current,
+          [activity.id]: true,
+        }));
+        setJoinFeedback((current) => ({
+          ...current,
+          [activity.id]: {
+            type: 'success',
+            message: 'Vous êtes déjà inscrit à cette activité.',
+          },
+        }));
+        return;
+      }
+
+      const { count, error: countError } = await supabase
+        .from('activity_participants')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('activity_id', activity.id)
+        .neq('user_id', activity.organizer_id);
+
+      if (countError) throw countError;
+      if (count === null) {
+        throw new Error('Impossible de vérifier les places disponibles.');
+      }
+      if (count + 1 >= activity.max_participants) {
+        throw new Error('Cette activité est complète.');
+      }
+
+      const { error: insertError } = await supabase
+        .from('activity_participants')
+        .insert({ activity_id: activity.id, user_id: userId });
+
+      if (insertError) throw insertError;
+
+      setParticipantCounts((current) => ({
+        ...current,
+        [activity.id]: count + 2,
+      }));
+      setJoinedActivities((current) => ({
+        ...current,
+        [activity.id]: true,
+      }));
+      setJoinFeedback((current) => ({
+        ...current,
+        [activity.id]: {
+          type: 'success',
+          message: 'Inscription réussie ! Vous avez rejoint cette activité.',
+        },
+      }));
+    } catch (error) {
+      console.error('JOIN ACTIVITY ERROR:', error);
+      setJoinFeedback((current) => ({
+        ...current,
+        [activity.id]: {
+          type: 'error',
+          message: getJoinErrorMessage(error),
+        },
+      }));
+    } finally {
+      setUpdatingActivityId(null);
+    }
+  };
+
+  const leaveActivity = async (activity: SportActivity) => {
+    if (!userId) {
+      setNotice({
+        type: 'error',
+        message: 'Connectez-vous pour gérer vos inscriptions.',
+      });
+      return;
+    }
+
+    if (activity.organizer_id === userId) {
+      setNotice({
+        type: 'error',
+        message: 'L’organisateur ne peut pas quitter sa propre activité.',
+      });
+      return;
+    }
+
+    setNotice(null);
+    setUpdatingActivityId(activity.id);
+    setJoinFeedback((current) => {
+      const next = { ...current };
+      delete next[activity.id];
+      return next;
+    });
+
+    try {
+      const { data, error } = await supabase
+        .from('activity_participants')
+        .delete()
+        .eq('activity_id', activity.id)
+        .eq('user_id', userId)
+        .select('activity_id');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Votre inscription est introuvable. Actualisez la liste et réessayez.'
+        );
+      }
+
+      setParticipantCounts((current) => ({
+        ...current,
+        [activity.id]: Math.max(1, (current[activity.id] ?? 2) - 1),
+      }));
+      setJoinedActivities((current) => {
+        const next = { ...current };
+        delete next[activity.id];
+        return next;
+      });
+      setNotice({
+        type: 'success',
+        message: `Vous avez quitté « ${activity.title} ».`,
+      });
+    } catch (error) {
+      setNotice({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Impossible de quitter cette activité. Réessayez.',
+      });
+    } finally {
+      setUpdatingActivityId(null);
+    }
+  };
+
+  const myActivities = activities.filter(
+    (activity) => joinedActivities[activity.id]
+  );
+  const displayedActivities = (
+    activityList === 'mine'
+      ? myActivities
+      : activities.filter(
+          (activity) =>
+            activity.status === 'open' &&
+            new Date(`${activity.activity_date}T23:59:59`).getTime() >=
+              Date.now()
+        )
+  ).sort(
+    (first, second) =>
+      new Date(first.activity_date).getTime() -
+      new Date(second.activity_date).getTime()
+  );
 
   const formatDate = (value: string) => {
     return new Date(value).toLocaleString('fr-FR', {
@@ -146,6 +470,59 @@ export default function ActivitiesScreen() {
             />
           }
         >
+          <View style={styles.listSelector}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: activityList === 'all' }}
+              style={[
+                styles.listSelectorButton,
+                activityList === 'all' && styles.listSelectorButtonActive,
+              ]}
+              onPress={() => setActivityList('all')}
+            >
+              <Text
+                style={[
+                  styles.listSelectorText,
+                  activityList === 'all' && styles.listSelectorTextActive,
+                ]}
+              >
+                Toutes
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: activityList === 'mine' }}
+              style={[
+                styles.listSelectorButton,
+                activityList === 'mine' && styles.listSelectorButtonActive,
+              ]}
+              onPress={() => setActivityList('mine')}
+            >
+              <Text
+                style={[
+                  styles.listSelectorText,
+                  activityList === 'mine' && styles.listSelectorTextActive,
+                ]}
+              >
+                Mes activités ({myActivities.length})
+              </Text>
+            </Pressable>
+          </View>
+
+          {notice ? (
+            <Text
+              accessibilityRole="alert"
+              style={[
+                styles.notice,
+                notice.type === 'error'
+                  ? styles.joinError
+                  : styles.joinSuccess,
+              ]}
+            >
+              {notice.message}
+            </Text>
+          ) : null}
+
           {errorMessage ? (
             <View style={styles.emptyCard}>
               <Text style={styles.error}>{errorMessage}</Text>
@@ -153,14 +530,18 @@ export default function ActivitiesScreen() {
                 <Text style={styles.retryText}>Réessayer</Text>
               </Pressable>
             </View>
-          ) : activities.length === 0 ? (
+          ) : displayedActivities.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyEmoji}>🏟️</Text>
               <Text style={styles.emptyTitle}>
-                Aucune activité pour le moment
+                {activityList === 'mine'
+                  ? 'Aucune inscription pour le moment'
+                  : 'Aucune activité pour le moment'}
               </Text>
               <Text style={styles.emptyText}>
-                Sois le premier à organiser un match et à réunir des joueurs !
+                {activityList === 'mine'
+                  ? 'Les activités que vous rejoignez apparaîtront ici.'
+                  : 'Sois le premier à organiser un match et à réunir des joueurs !'}
               </Text>
               <Pressable
                 style={styles.createButton}
@@ -172,7 +553,7 @@ export default function ActivitiesScreen() {
               </Pressable>
             </View>
           ) : (
-            activities.map((activity) => (
+            displayedActivities.map((activity) => (
               <View key={activity.id} style={styles.card}>
                 <View style={styles.cardTop}>
                   <Text style={styles.sport}>{activity.sport}</Text>
@@ -192,7 +573,8 @@ export default function ActivitiesScreen() {
                 </Text>
 
                 <Text style={styles.detail}>
-                  👥 Maximum {activity.max_participants} participants
+                  👥 {participantCounts[activity.id] ?? 1} /{' '}
+                  {activity.max_participants} participants
                 </Text>
 
                 {activity.description ? (
@@ -207,6 +589,78 @@ export default function ActivitiesScreen() {
                     {organizers[activity.organizer_id] || 'SportMate'}
                   </Text>
                 </View>
+
+                {joinedActivities[activity.id] ? (
+                  <>
+                    <Text style={styles.joinedLabel}>Déjà inscrit</Text>
+                    {activity.status === 'open' &&
+                    new Date(
+                      `${activity.activity_date}T23:59:59`
+                    ).getTime() >= Date.now() ? (
+                      <Pressable
+                        style={[
+                          styles.leaveButton,
+                          updatingActivityId !== null &&
+                            styles.joinButtonDisabled,
+                        ]}
+                        onPress={() => void leaveActivity(activity)}
+                        disabled={updatingActivityId !== null}
+                      >
+                        {updatingActivityId === activity.id ? (
+                          <ActivityIndicator color="#20583D" />
+                        ) : (
+                          <Text style={styles.leaveButtonText}>
+                            Quitter l’activité
+                          </Text>
+                        )}
+                      </Pressable>
+                    ) : null}
+                  </>
+                ) : (
+                  <Pressable
+                    style={[
+                      styles.joinButton,
+                      (activity.organizer_id === userId ||
+                        (participantCounts[activity.id] ?? 1) >=
+                          activity.max_participants ||
+                        updatingActivityId !== null) &&
+                        styles.joinButtonDisabled,
+                    ]}
+                    onPress={() => void joinActivity(activity)}
+                    disabled={
+                      activity.organizer_id === userId ||
+                      (participantCounts[activity.id] ?? 1) >=
+                        activity.max_participants ||
+                      updatingActivityId !== null
+                    }
+                  >
+                    {updatingActivityId === activity.id ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.joinButtonText}>
+                        {activity.organizer_id === userId
+                          ? 'Votre activité'
+                          : (participantCounts[activity.id] ?? 1) >=
+                              activity.max_participants
+                            ? 'Complet'
+                            : 'Rejoindre'}
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
+
+                {joinFeedback[activity.id] ? (
+                  <Text
+                    style={[
+                      styles.joinFeedback,
+                      joinFeedback[activity.id].type === 'error'
+                        ? styles.joinError
+                        : styles.joinSuccess,
+                    ]}
+                  >
+                    {joinFeedback[activity.id].message}
+                  </Text>
+                ) : null}
               </View>
             ))
           )}
@@ -260,6 +714,37 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 50,
+  },
+  listSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#E9EDE7',
+    borderRadius: 13,
+    padding: 4,
+    marginBottom: 2,
+  },
+  listSelectorButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  listSelectorButtonActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  listSelectorText: {
+    color: '#66736A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  listSelectorTextActive: {
+    color: '#20583D',
+    fontWeight: '800',
+  },
+  notice: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingVertical: 6,
   },
   list: {
     paddingHorizontal: 20,
@@ -321,6 +806,51 @@ const styles = StyleSheet.create({
     color: '#20583D',
     fontWeight: '700',
     fontSize: 12,
+  },
+  joinButton: {
+    backgroundColor: '#20583D',
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  joinButtonDisabled: {
+    backgroundColor: '#8A948D',
+  },
+  joinButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  joinedLabel: {
+    color: '#20583D',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  leaveButton: {
+    borderWidth: 1,
+    borderColor: '#20583D',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  leaveButtonText: {
+    color: '#20583D',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  joinFeedback: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  joinSuccess: {
+    color: '#20583D',
+  },
+  joinError: {
+    color: '#B42318',
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
