@@ -38,6 +38,11 @@ type ActivityParticipant = {
 };
 
 type ActivityList = 'all' | 'mine';
+type ActivityAvailability = 'open' | 'closed';
+
+function isActivityInFuture(activity: SportActivity) {
+  return new Date(activity.activity_date).getTime() >= Date.now();
+}
 
 function getJoinErrorMessage(error: unknown) {
   if (!error || typeof error !== 'object') {
@@ -76,6 +81,8 @@ export default function ActivitiesScreen() {
     Record<string, boolean>
   >({});
   const [activityList, setActivityList] = useState<ActivityList>('all');
+  const [activityAvailability, setActivityAvailability] =
+    useState<ActivityAvailability>('open');
   const [updatingActivityId, setUpdatingActivityId] = useState<string | null>(
     null
   );
@@ -100,8 +107,6 @@ export default function ActivitiesScreen() {
       const { data, error } = await supabase
         .from('activities')
         .select(activityColumns)
-        .gte('activity_date', new Date().toISOString())
-        .eq('status', 'open')
         .order('activity_date', { ascending: true });
 
       if (error) throw error;
@@ -157,8 +162,6 @@ export default function ActivitiesScreen() {
       });
 
       const rows = [...rowsById.values()];
-      setActivities(rows);
-
       const activityIds = rows.map((activity) => activity.id);
 
       if (activityIds.length > 0) {
@@ -198,6 +201,8 @@ export default function ActivitiesScreen() {
       } else {
         setParticipantCounts({});
       }
+
+      setActivities(rows);
 
       setJoinedActivities(
         Object.fromEntries(
@@ -455,17 +460,24 @@ export default function ActivitiesScreen() {
   const displayedActivities = (
     activityList === 'mine'
       ? myActivities
-      : activities.filter(
-          (activity) =>
-            activity.status === 'open' &&
-            new Date(`${activity.activity_date}T23:59:59`).getTime() >=
-              Date.now()
-        )
-  ).sort(
-    (first, second) =>
-      new Date(first.activity_date).getTime() -
-      new Date(second.activity_date).getTime()
-  );
+      : activities
+  )
+    .filter((activity) => {
+      const participantCount = participantCounts[activity.id] ?? 1;
+      const isAcceptingParticipants =
+        activity.status === 'open' &&
+        isActivityInFuture(activity) &&
+        participantCount < activity.max_participants;
+
+      return activityAvailability === 'open'
+        ? isAcceptingParticipants
+        : !isAcceptingParticipants;
+    })
+    .sort(
+      (first, second) =>
+        new Date(first.activity_date).getTime() -
+        new Date(second.activity_date).getTime()
+    );
 
   const formatDate = (value: string) => {
     return new Date(value).toLocaleString('fr-FR', {
@@ -553,6 +565,52 @@ export default function ActivitiesScreen() {
             </Pressable>
           </View>
 
+          <View style={styles.availabilitySelector}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: activityAvailability === 'open' }}
+              style={[
+                styles.listSelectorButton,
+                activityAvailability === 'open' &&
+                  styles.listSelectorButtonActive,
+              ]}
+              onPress={() => setActivityAvailability('open')}
+            >
+              <Text
+                style={[
+                  styles.listSelectorText,
+                  activityAvailability === 'open' &&
+                    styles.listSelectorTextActive,
+                ]}
+              >
+                Ouvertes
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: activityAvailability === 'closed',
+              }}
+              style={[
+                styles.listSelectorButton,
+                activityAvailability === 'closed' &&
+                  styles.listSelectorButtonActive,
+              ]}
+              onPress={() => setActivityAvailability('closed')}
+            >
+              <Text
+                style={[
+                  styles.listSelectorText,
+                  activityAvailability === 'closed' &&
+                    styles.listSelectorTextActive,
+                ]}
+              >
+                Fermées
+              </Text>
+            </Pressable>
+          </View>
+
           {notice ? (
             <Text
               accessibilityRole="alert"
@@ -579,13 +637,19 @@ export default function ActivitiesScreen() {
               <Text style={styles.emptyEmoji}>🏟️</Text>
               <Text style={styles.emptyTitle}>
                 {activityList === 'mine'
-                  ? 'Aucune inscription pour le moment'
-                  : 'Aucune activité pour le moment'}
+                  ? activityAvailability === 'open'
+                    ? 'Aucune activité ouverte dans vos inscriptions'
+                    : 'Aucune activité fermée dans vos inscriptions'
+                  : activityAvailability === 'open'
+                    ? 'Aucune activité ouverte pour le moment'
+                    : 'Aucune activité fermée pour le moment'}
               </Text>
               <Text style={styles.emptyText}>
                 {activityList === 'mine'
-                  ? 'Les activités que vous rejoignez apparaîtront ici.'
-                  : 'Sois le premier à organiser un match et à réunir des joueurs !'}
+                  ? 'Les activités correspondantes auxquelles vous participez apparaîtront ici.'
+                  : activityAvailability === 'open'
+                    ? 'Sois le premier à organiser un match et à réunir des joueurs !'
+                    : 'Les activités complètes, annulées ou passées apparaîtront ici.'}
               </Text>
               <Pressable
                 style={styles.createButton}
@@ -601,6 +665,11 @@ export default function ActivitiesScreen() {
               const isOrganizer = activity.organizer_id === userId;
               const hasJoined = !!joinedActivities[activity.id];
               const canOpenChat = !!userId && (isOrganizer || hasJoined);
+              const participantCount = participantCounts[activity.id] ?? 1;
+              const isActivityAcceptingParticipants =
+                activity.status === 'open' &&
+                isActivityInFuture(activity) &&
+                participantCount < activity.max_participants;
 
               return (
                 <View key={activity.id} style={styles.card}>
@@ -644,9 +713,7 @@ export default function ActivitiesScreen() {
                       <Text style={styles.joinedLabel}>Déjà inscrit</Text>
 
                       {activity.status === 'open' &&
-                      new Date(
-                        `${activity.activity_date}T23:59:59`
-                      ).getTime() >= Date.now() ? (
+                      isActivityInFuture(activity) ? (
                         <Pressable
                           style={[
                             styles.leaveButton,
@@ -671,16 +738,14 @@ export default function ActivitiesScreen() {
                       style={[
                         styles.joinButton,
                         (isOrganizer ||
-                          (participantCounts[activity.id] ?? 1) >=
-                            activity.max_participants ||
+                          !isActivityAcceptingParticipants ||
                           updatingActivityId !== null) &&
                           styles.joinButtonDisabled,
                       ]}
                       onPress={() => void joinActivity(activity)}
                       disabled={
                         isOrganizer ||
-                        (participantCounts[activity.id] ?? 1) >=
-                          activity.max_participants ||
+                        !isActivityAcceptingParticipants ||
                         updatingActivityId !== null
                       }
                     >
@@ -690,8 +755,10 @@ export default function ActivitiesScreen() {
                         <Text style={styles.joinButtonText}>
                           {isOrganizer
                             ? 'Votre activité'
-                            : (participantCounts[activity.id] ?? 1) >=
-                                activity.max_participants
+                            : activity.status !== 'open' ||
+                                !isActivityInFuture(activity)
+                              ? 'Fermée'
+                              : participantCount >= activity.max_participants
                               ? 'Complet'
                               : 'Rejoindre'}
                         </Text>
@@ -779,6 +846,13 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   listSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#E9EDE7',
+    borderRadius: 13,
+    padding: 4,
+    marginBottom: 2,
+  },
+  availabilitySelector: {
     flexDirection: 'row',
     backgroundColor: '#E9EDE7',
     borderRadius: 13,
