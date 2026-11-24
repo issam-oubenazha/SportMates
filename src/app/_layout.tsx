@@ -9,9 +9,10 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { View, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import AppNavbar from '@/components/app-navbar';
 import { AuthProvider, useAuth } from '../contexts/auth-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -45,16 +46,20 @@ function AuthNavigation() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-      <Stack.Screen name="activities" options={{ headerShown: false }} />
-      <Stack.Screen name="create-activity" options={{ headerShown: false }} />
-      <Stack.Screen name="explore" options={{ headerShown: false }} />
-      <Stack.Screen name="profile" options={{ headerShown: false }} />
-      <Stack.Screen name="player/[id]" options={{ headerShown: false }}/>
-    </Stack>
+    <View style={{ flex: 1 }}>
+      {session && !isAuthPage ? <AppNavbar /> : null}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="activities" options={{ headerShown: false }} />
+        <Stack.Screen name="activity-chat" options={{ headerShown: false }} />
+        <Stack.Screen name="create-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="explore" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="player/[id]" options={{ headerShown: false }} />
+      </Stack>
+    </View>
   );
 }
 

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 48,
+    paddingTop: 20,
     paddingBottom: 60,
   },
   backButton: {
