@@ -1,4 +1,3 @@
-
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -7,17 +6,29 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
+import { useAuth } from '../contexts/auth-context';
 
 const sports = [
-  { emoji: '⚽', name: 'Football' },
-  { emoji: '🎾', name: 'Padel' },
-  { emoji: '🏃', name: 'Running' },
-  { emoji: '🏋️', name: 'Gym' },
+  { emoji: '⚽', name: 'Football', hint: 'Trouve ton équipe' },
+  { emoji: '🎾', name: 'Padel', hint: 'Réserve un match' },
+  { emoji: '🏃', name: 'Running', hint: 'Cours à plusieurs' },
+  { emoji: '🏋️', name: 'Fitness', hint: 'Garde le rythme' },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 760;
+  const fullName = session?.user.user_metadata?.full_name;
+  const firstName =
+    typeof fullName === 'string'
+      ? fullName.trim().split(/\s+/)[0] || 'SportMate'
+      : 'SportMate';
+  const initial = firstName.charAt(0).toUpperCase();
+
   const goToActivities = () => router.push('/activities');
   const goToCreateActivity = () => router.push('/create-activity');
   const goToExplore = () => router.push('/explore');
@@ -27,137 +38,197 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>SALAM 👋</Text>
-            <Text style={styles.title}>SportMates</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, isWide && styles.wideContent]}
+      >
+        <View style={styles.welcomeRow}>
+          <View style={styles.welcomeCopy}>
+            <Text style={styles.eyebrow}>TA COMMUNAUTÉ SPORTIVE</Text>
+            <Text style={styles.greeting}>Salam, {firstName} 👋</Text>
             <Text style={styles.subtitle}>
-              L9a les partenaires dyal sport !
+              Le sport est encore meilleur à plusieurs.
             </Text>
           </View>
 
           <Pressable
-            style={styles.avatar}
+            style={({ pressed }) => [
+              styles.profileButton,
+              pressed && styles.pressed,
+            ]}
             onPress={goToProfile}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir mon profil"
           >
-            <Text style={styles.avatarText}>S</Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
+            {isWide ? (
+              <View>
+                <Text style={styles.profileButtonTitle}>Mon profil</Text>
+                <Text style={styles.profileButtonHint}>Voir mes infos</Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
 
-        <View style={styles.banner}>
-          <Text style={styles.bannerLabel}>
-            SPORT • FRIENDS • FUN
-          </Text>
+        <View style={[styles.hero, isWide && styles.wideHero]}>
+          <View style={[styles.heroCopy, isWide && styles.wideHeroCopy]}>
+            <View style={styles.heroBadge}>
+              <View style={styles.heroBadgeDot} />
+              <Text style={styles.heroBadgeText}>SPORT • AMIS • FUN</Text>
+            </View>
 
-          <Text style={styles.bannerTitle}>
-            Ma tl3bch بوحدك !
-          </Text>
+            <Text style={styles.heroTitle}>
+              Trouve ta team.{'\n'}Bouge plus.
+            </Text>
+            <Text style={styles.heroDescription}>
+              Découvre des sportifs près de toi, rejoins une activité ou crée
+              ton prochain match.
+            </Text>
 
-          <Text style={styles.bannerText}>
-            L9a chi wa7d ypartagi m3ak nafs passion.
-          </Text>
+            <View style={[styles.heroActions, !isWide && styles.mobileHeroActions]}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={goToExplore}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.primaryButtonPressed,
+                ]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  Trouver des partenaires <Text>→</Text>
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={goToActivities}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  pressed && styles.secondaryButtonPressed,
+                ]}
+              >
+                <Text style={styles.secondaryButtonText}>Voir les activités</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.sportVisual, !isWide && styles.mobileSportVisual]}
+          >
+            <View style={styles.visualHalo} />
+            <View style={[styles.sportBubble, styles.footballBubble]}>
+              <Text style={styles.bubbleEmoji}>⚽</Text>
+            </View>
+            <View style={[styles.sportBubble, styles.tennisBubble]}>
+              <Text style={styles.bubbleEmoji}>🎾</Text>
+            </View>
+            <View style={[styles.sportBubble, styles.runningBubble]}>
+              <Text style={styles.bubbleEmoji}>🏃</Text>
+            </View>
+            <View style={styles.visualCaption}>
+              <Text style={styles.visualCaptionTitle}>À plusieurs,</Text>
+              <Text style={styles.visualCaptionText}>c’est mieux.</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionEyebrow}>PASSE À L’ACTION</Text>
+            <Text style={styles.sectionTitle}>Commence ici</Text>
+          </View>
+        </View>
+
+        <View style={[styles.actionGrid, isWide && styles.wideActionGrid]}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={goToActivities}
+            style={({ pressed }) => [
+              styles.actionCard,
+              isWide && styles.wideActionCard,
+              pressed && styles.cardPressed,
+            ]}
+          >
+            <View style={[styles.actionIcon, styles.activityIcon]}>
+              <Text style={styles.actionEmoji}>🏟️</Text>
+            </View>
+            <View style={styles.actionCopy}>
+              <Text style={styles.actionTitle}>Rejoins une activité</Text>
+              <Text style={styles.actionDescription}>
+                Des matchs et des sessions à découvrir.
+              </Text>
+            </View>
+            <Text style={styles.actionArrow}>↗</Text>
+          </Pressable>
 
           <Pressable
-            style={styles.primaryButton}
-            onPress={goToExplore}
+            accessibilityRole="button"
+            onPress={goToCreateActivity}
+            style={({ pressed }) => [
+              styles.actionCard,
+              isWide && styles.wideActionCard,
+              pressed && styles.cardPressed,
+            ]}
           >
-            <Text style={styles.primaryButtonText}>
-              Découvrir les sportifs →
-            </Text>
+            <View style={[styles.actionIcon, styles.createIcon]}>
+              <Text style={styles.actionEmoji}>＋</Text>
+            </View>
+            <View style={styles.actionCopy}>
+              <Text style={styles.actionTitle}>Organise ton match</Text>
+              <Text style={styles.actionDescription}>
+                Choisis ton sport et invite la communauté.
+              </Text>
+            </View>
+            <Text style={styles.actionArrow}>↗</Text>
           </Pressable>
         </View>
 
-        {/* Sports */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Choisis ton sport</Text>
-
-          <Pressable onPress={goToExplore}>
-            <Text style={styles.seeAll}>Voir tout</Text>
+          <View>
+            <Text style={styles.sectionEyebrow}>CHOISIS TON TERRAIN</Text>
+            <Text style={styles.sectionTitle}>Quel sport te tente ?</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={goToExplore}
+            hitSlop={8}
+          >
+            <Text style={styles.seeAll}>Tout explorer →</Text>
           </Pressable>
-
         </View>
 
         <View style={styles.sportsGrid}>
           {sports.map((sport) => (
             <Pressable
               key={sport.name}
-              style={styles.sportCard}
+              accessibilityRole="button"
               onPress={goToExplore}
+              style={({ pressed }) => [
+                styles.sportCard,
+                isWide && styles.wideSportCard,
+                pressed && styles.cardPressed,
+              ]}
             >
-              <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+              <View style={styles.sportCardTop}>
+                <View style={styles.sportEmojiBox}>
+                  <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+                </View>
+                <Text style={styles.sportCardArrow}>↗</Text>
+              </View>
               <Text style={styles.sportName}>{sport.name}</Text>
-              <Text style={styles.sportHint}>
-                Découvrir les sportifs →
-              </Text>
+              <Text style={styles.sportHint}>{sport.hint}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Pressable
-          style={styles.profileButton}
-          onPress={goToActivities}
-          accessibilityRole="button"
-        >
-          <Text style={styles.profileIcon}>🏟️</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Toutes les activités</Text>
-            <Text style={styles.cardSubtitle}>
-              Découvre les matchs disponibles
-            </Text>
-          </View>
-          <Text style={styles.arrow}>›</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.profileButton}
-          onPress={goToCreateActivity}
-          accessibilityRole="button"
-        >
-          <Text style={styles.profileIcon}>📅</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Créer une activité</Text>
-            <Text style={styles.cardSubtitle}>
-              Organise un match près de chez toi
-            </Text>
-          </View>
-          <Text style={styles.arrow}>›</Text>
-        </Pressable>
-
-        {/* Activités à proximité */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Près de chez toi</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerMark}>SPORTMATES ⚡</Text>
+          <Text style={styles.footerText}>Bouge avec ta communauté.</Text>
         </View>
-
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>📍</Text>
-
-          <Text style={styles.emptyTitle}>Sport à Fès</Text>
-
-
-
-          <Text style={styles.emptyText}>
-            Découvre les matchs et les activités organisés dans ta ville.
-          </Text>
-
-
-          <Pressable
-            style={styles.discoverButton}
-            onPress={goToExplore}
-          >
-            <Text style={styles.discoverButtonText}>
-              Trouver des partenaires
-            </Text>
-          </Pressable>
-
-        </View>
-
-        <Text style={styles.footer}>
-          SportMates • Bouge avec ta communauté 💚
-        </Text>
       </ScrollView>
     </View>
   );
@@ -166,228 +237,427 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8F4',
-    paddingTop: 20,
+    backgroundColor: '#F5F7F2',
   },
-
-  header: {
+  content: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 38,
+  },
+  wideContent: {
+    maxWidth: 1180,
+    paddingHorizontal: 32,
+    paddingTop: 30,
+    paddingBottom: 50,
+  },
+  welcomeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    marginBottom: 25,
+    justifyContent: 'space-between',
+    marginBottom: 22,
   },
-
-  greeting: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#65816D',
-    letterSpacing: 2,
+  welcomeCopy: {
+    flex: 1,
+    paddingRight: 12,
   },
-
-  title: {
-    fontSize: 29,
+  eyebrow: {
+    color: '#66816D',
+    fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 1.6,
+  },
+  greeting: {
     color: '#183C2B',
+    fontSize: 25,
+    fontWeight: '900',
+    letterSpacing: -0.5,
     marginTop: 4,
   },
-
   subtitle: {
-    fontSize: 13,
     color: '#788078',
+    fontSize: 13,
     marginTop: 5,
   },
-
+  profileButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 16,
+  },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#DDEBDD',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   avatarText: {
-    fontSize: 22,
-    fontWeight: '800',
     color: '#24543A',
+    fontSize: 19,
+    fontWeight: '900',
   },
-  profileButton: {
+  profileButtonTitle: {
+    color: '#294333',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  profileButtonHint: {
+    color: '#89938B',
+    fontSize: 10,
+    marginTop: 3,
+  },
+  hero: {
+    minHeight: 300,
+    flexDirection: 'row',
+    backgroundColor: '#20583D',
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 34,
+    overflow: 'hidden',
+  },
+  wideHero: {
+    minHeight: 350,
+    paddingHorizontal: 42,
+    paddingVertical: 35,
+    alignItems: 'center',
+    marginBottom: 44,
+  },
+  heroCopy: {
+    flex: 1,
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  wideHeroCopy: {
+    flex: 1.2,
+  },
+  heroBadge: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E9EDE7',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
-  profileIcon: {
-    fontSize: 26,
-    width: 44,
-    textAlign: 'center',
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#20392A',
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#788078',
-    marginTop: 4,
-  },
-  arrow: {
-    fontSize: 28,
-    color: '#20583D',
-    marginLeft: 8,
-  },
-  banner: {
-    marginHorizontal: 20,
-    padding: 22,
-    borderRadius: 25,
-    backgroundColor: '#20583D',
-    marginBottom: 30,
-  },
-
-  bannerLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#C5E8C8',
-    letterSpacing: 2,
-  },
-
-  bannerTitle: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 13,
-  },
-
-  bannerText: {
-    color: '#E1EDE3',
-    fontSize: 13,
-    lineHeight: 21,
-    marginTop: 8,
-  },
-
-  primaryButton: {
-    alignSelf: 'flex-start',
+  heroBadgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: '#D7F379',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: 13,
-    marginTop: 20,
   },
-
+  heroBadgeText: {
+    color: '#E2F0E3',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 35,
+    fontWeight: '900',
+    lineHeight: 40,
+    letterSpacing: -0.8,
+    marginTop: 21,
+  },
+  heroDescription: {
+    maxWidth: 440,
+    color: '#E0EBE1',
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 12,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 22,
+  },
+  mobileHeroActions: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  primaryButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#D7F379',
+    paddingHorizontal: 17,
+    borderRadius: 14,
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#C6E663',
+    transform: [{ scale: 0.98 }],
+  },
   primaryButtonText: {
     color: '#1B3C29',
     fontSize: 12,
+    fontWeight: '900',
+  },
+  secondaryButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  secondaryButtonPressed: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  secondaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '800',
   },
-
+  sportVisual: {
+    width: 310,
+    height: 270,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileSportVisual: {
+    position: 'absolute',
+    right: -82,
+    bottom: -34,
+    width: 225,
+    height: 190,
+    opacity: 0.42,
+  },
+  visualHalo: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(215,243,121,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(215,243,121,0.18)',
+  },
+  sportBubble: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 5,
+    borderColor: 'rgba(255,255,255,0.24)',
+    elevation: 5,
+  },
+  footballBubble: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    top: 26,
+    left: 30,
+  },
+  tennisBubble: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    top: 55,
+    right: 24,
+  },
+  runningBubble: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    bottom: 23,
+    left: 68,
+  },
+  bubbleEmoji: {
+    fontSize: 34,
+  },
+  visualCaption: {
+    position: 'absolute',
+    right: 5,
+    bottom: 22,
+    backgroundColor: '#D7F379',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 14,
+    transform: [{ rotate: '4deg' }],
+  },
+  visualCaptionTitle: {
+    color: '#1B3C29',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  visualCaptionText: {
+    color: '#46603D',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   sectionHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 22,
+    marginHorizontal: 2,
     marginBottom: 15,
   },
-
-  sectionTitle: {
-    fontSize: 18,
+  sectionEyebrow: {
+    color: '#829086',
+    fontSize: 9,
     fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 5,
+  },
+  sectionTitle: {
     color: '#20392A',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
-
-  seeAll: {
-    fontSize: 12,
+  actionGrid: {
+    gap: 12,
+    marginBottom: 34,
+  },
+  wideActionGrid: {
+    flexDirection: 'row',
+    marginBottom: 42,
+  },
+  actionCard: {
+    minHeight: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 19,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E7ECE5',
+    gap: 13,
+  },
+  wideActionCard: {
+    flex: 1,
+    minHeight: 104,
+    padding: 18,
+  },
+  actionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityIcon: {
+    backgroundColor: '#E7F0E5',
+  },
+  createIcon: {
+    backgroundColor: '#F1F4D9',
+  },
+  actionEmoji: {
+    color: '#20583D',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  actionCopy: {
+    flex: 1,
+  },
+  actionTitle: {
+    color: '#20392A',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  actionDescription: {
+    color: '#788078',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  actionArrow: {
     color: '#66806D',
-    fontWeight: '600',
+    fontSize: 19,
+    fontWeight: '700',
   },
-
+  seeAll: {
+    color: '#20583D',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingVertical: 6,
+  },
   sportsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 28,
+    rowGap: 12,
   },
-
   sportCard: {
-    width: '48%',
+    width: '48.5%',
+    minHeight: 145,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    marginBottom: 12,
+    borderRadius: 19,
+    padding: 15,
     borderWidth: 1,
-    borderColor: '#E9EDE7',
+    borderColor: '#E7ECE5',
+  },
+  wideSportCard: {
+    width: '23.5%',
+    minHeight: 166,
+    padding: 19,
+  },
+  sportCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 17,
+  },
+  sportEmojiBox: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2F6F0',
+    borderRadius: 15,
   },
   sportEmoji: {
-    fontSize: 30,
-    marginBottom: 12,
+    fontSize: 26,
   },
-
-
+  sportCardArrow: {
+    color: '#A0AAA1',
+    fontSize: 18,
+  },
   sportName: {
-    fontSize: 15,
-    fontWeight: '700',
     color: '#294333',
+    fontSize: 15,
+    fontWeight: '800',
   },
   sportHint: {
+    color: '#788078',
     fontSize: 10,
-    color: '#66806D',
-    marginTop: 8,
+    marginTop: 5,
   },
-
-
-  emptyCard: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: '#E9EDE7',
+  pressed: {
+    opacity: 0.75,
   },
-  emptyEmoji: {
-    fontSize: 27,
+  cardPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.985 }],
   },
-
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#294333',
-    marginTop: 10,
-  },
-
-  emptyText: {
-    color: '#7A837C',
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 7,
-  },
-  discoverButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DDEBDD',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  discoverButtonText: {
-    color: '#20583D',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-
-
   footer: {
-    textAlign: 'center',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E7ECE5',
+    marginTop: 35,
+    paddingTop: 20,
+  },
+  footerMark: {
+    color: '#66816D',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  footerText: {
     color: '#89938B',
     fontSize: 11,
-    marginTop: 25,
-    marginBottom: 100,
+    marginTop: 6,
   },
 });
