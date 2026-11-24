@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingTop: 50,
+    paddingTop: 20,
     paddingBottom: 50,
     width: '100%',
     maxWidth: 520,
