@@ -1,5 +1,6 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -115,7 +116,16 @@ export default function PublicPlayerProfile() {
         <>
           <View style={styles.hero}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
+              {player.avatar_url ? (
+                <Image
+                  source={{ uri: player.avatar_url }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
             </View>
 
             <Text style={styles.name}>
@@ -220,6 +230,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: '#7CFF6B',

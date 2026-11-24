@@ -1,5 +1,6 @@
 
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useAuth } from '../contexts/auth-context';
 import { supabase } from '../lib/supabase';
@@ -36,6 +38,8 @@ const SPORTS = [
 export default function ExploreScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 820;
   const [players, setPlayers] = useState<Player[]>([]);
   const [search, setSearch] = useState('');
   const [selectedSport, setSelectedSport] = useState('Tous');
@@ -105,9 +109,8 @@ export default function ExploreScreen() {
     >
       <View style={styles.header}>
         <View>
-          <Text style={styles.logo}>
-            SportMates <Text style={styles.lightning}>⚡</Text>
-          </Text>
+          <Text style={styles.pageEyebrow}>SPORTMATES COMMUNITY</Text>
+          <Text style={styles.pageTitle}>Explorer</Text>
           <Text style={styles.subtitle}>Trouve ton prochain partenaire.</Text>
         </View>
 
@@ -131,7 +134,10 @@ export default function ExploreScreen() {
         </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Trouver des sportifs</Text>
+      <View style={styles.sectionHeading}>
+        <Text style={styles.sectionTitle}>Trouver des sportifs</Text>
+        <Text style={styles.sectionHint}>Cherche par nom, ville ou sport</Text>
+      </View>
 
       <View style={styles.searchBox}>
         <Text style={styles.searchIcon}>⌕</Text>
@@ -237,19 +243,33 @@ export default function ExploreScreen() {
               .toUpperCase();
 
             return (
-                    <Pressable
-                      key={player.id}
-                      style={styles.playerCard}
-                      onPress={() =>
-                      router.push({
-                        pathname: '/player/[id]',
-                        params: { id: player.id },
-                      })
-                    }
-                  >
+              <Pressable
+                key={player.id}
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({
+                    pathname: '/player/[id]',
+                    params: { id: player.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.playerCard,
+                  isWide && styles.widePlayerCard,
+                  pressed && styles.playerCardPressed,
+                ]}
+              >
                 <View style={styles.playerTop}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{initial || '?'}</Text>
+                    {player.avatar_url ? (
+                      <Image
+                        source={{ uri: player.avatar_url }}
+                        style={styles.avatarImage}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
+                    ) : (
+                      <Text style={styles.avatarText}>{initial || '?'}</Text>
+                    )}
                   </View>
 
                   <View style={styles.playerInfo}>
@@ -261,7 +281,7 @@ export default function ExploreScreen() {
                     </Text>
                   </View>
 
-                  <View style={styles.onlineDot} />
+                  <Text style={styles.playerArrow}>›</Text>
                 </View>
 
                 <View style={styles.sportBadge}>
@@ -290,13 +310,13 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0B1220',
+    backgroundColor: '#F5F7F2',
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 18,
+    paddingTop: 22,
     paddingBottom: 120,
-    maxWidth: 850,
+    maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
   },
@@ -304,45 +324,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 28,
+    marginBottom: 22,
   },
-  logo: {
-    color: '#FFFFFF',
-    fontSize: 23,
+  pageEyebrow: {
+    color: '#65816D',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  pageTitle: {
+    color: '#183C2B',
+    fontSize: 28,
     fontWeight: '900',
-  },
-  lightning: {
-    color: '#7CFF6B',
+    marginTop: 3,
   },
   subtitle: {
-    color: '#9BA7BA',
+    color: '#788078',
     fontSize: 13,
     marginTop: 5,
   },
   refreshButton: {
     width: 44,
     height: 44,
-    borderRadius: 15,
-    backgroundColor: '#172235',
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#29364A',
+    borderColor: '#E4EAE2',
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 2,
   },
   refreshText: {
-    color: '#7CFF6B',
-    fontSize: 30,
+    color: '#20583D',
+    fontSize: 27,
+    fontWeight: '700',
   },
   hero: {
-    backgroundColor: '#152638',
+    backgroundColor: '#20583D',
     borderRadius: 24,
-    padding: 23,
+    padding: 24,
     marginBottom: 30,
     borderWidth: 1,
-    borderColor: '#294238',
+    borderColor: '#2A6649',
+    overflow: 'hidden',
   },
   eyebrow: {
-    color: '#7CFF6B',
+    color: '#D7F379',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -350,116 +377,149 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: '#FFFFFF',
-    fontSize: 30,
+    fontSize: 29,
     fontWeight: '900',
-    lineHeight: 37,
+    lineHeight: 36,
   },
   heroDescription: {
-    color: '#B5C0CE',
+    color: '#E0EBE1',
     fontSize: 14,
     lineHeight: 22,
     marginTop: 12,
   },
+  sectionHeading: {
+    marginBottom: 2,
+  },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '800',
+    color: '#20392A',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  sectionHint: {
+    color: '#879188',
+    fontSize: 12,
+    marginTop: 5,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141F30',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#29364A',
-    borderRadius: 16,
+    borderColor: '#E2E9E0',
+    borderRadius: 15,
     paddingHorizontal: 15,
-    height: 54,
-    marginTop: 16,
-    marginBottom: 23,
+    height: 52,
+    marginTop: 14,
+    marginBottom: 22,
   },
   searchIcon: {
-    color: '#7CFF6B',
-    fontSize: 27,
+    color: '#66816D',
+    fontSize: 25,
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#20392A',
     fontSize: 14,
-    outlineStyle: 'none',
-  } as any,
+  },
   clearText: {
-    color: '#A7B2C2',
+    color: '#788078',
     padding: 6,
   },
   filterLabel: {
-    color: '#8997AA',
+    color: '#78867B',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.4,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sportList: {
     gap: 8,
-    paddingBottom: 26,
+    paddingBottom: 24,
   },
   sportChip: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#344156',
-    backgroundColor: '#141F30',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    borderColor: '#E0E7DE',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   activeSportChip: {
-    backgroundColor: '#7CFF6B',
-    borderColor: '#7CFF6B',
+    backgroundColor: '#20583D',
+    borderColor: '#20583D',
   },
   sportChipText: {
-    color: '#C1CBD8',
+    color: '#647166',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   activeSportChipText: {
-    color: '#0B1220',
-    fontWeight: '900',
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   resultCount: {
-    color: '#9BA7BA',
+    color: '#66816D',
     fontSize: 11,
+    fontWeight: '700',
+    backgroundColor: '#E8F0E6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
   playerList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 14,
   },
   playerCard: {
-    backgroundColor: '#141F30',
+    width: '100%',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#263449',
+    borderColor: '#E4EAE2',
     borderRadius: 20,
-    padding: 17,
+    padding: 18,
+    shadowColor: '#183C2B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.045,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  widePlayerCard: {
+    width: '48.5%',
+  },
+  playerCardPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
   },
   playerTop: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
-    backgroundColor: '#263D34',
-    borderWidth: 1,
-    borderColor: '#456B4B',
+    width: 58,
+    height: 58,
+    borderRadius: 19,
+    backgroundColor: '#E7F0E5',
+    borderWidth: 2,
+    borderColor: '#F4F7F2',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
-    color: '#7CFF6B',
+    color: '#20583D',
     fontSize: 22,
     fontWeight: '900',
   },
@@ -468,36 +528,36 @@ const styles = StyleSheet.create({
     marginLeft: 13,
   },
   playerName: {
-    color: '#FFFFFF',
+    color: '#20392A',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   playerCity: {
-    color: '#9BA7BA',
+    color: '#788078',
     fontSize: 12,
     marginTop: 6,
   },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#7CFF6B',
+  playerArrow: {
+    color: '#77907D',
+    fontSize: 27,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   sportBadge: {
     alignSelf: 'flex-start',
     marginTop: 16,
-    backgroundColor: '#20372E',
+    backgroundColor: '#EAF2E8',
     borderRadius: 10,
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
   sportBadgeText: {
-    color: '#7CFF6B',
+    color: '#2C6847',
     fontSize: 11,
     fontWeight: '800',
   },
   playerBio: {
-    color: '#AEB9C9',
+    color: '#69766C',
     fontSize: 13,
     lineHeight: 20,
     marginTop: 13,
@@ -509,44 +569,44 @@ const styles = StyleSheet.create({
   },
   stateCard: {
     alignItems: 'center',
-    backgroundColor: '#141F30',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: 22,
     paddingVertical: 28,
     borderWidth: 1,
-    borderColor: '#263449',
+    borderColor: '#E4EAE2',
   },
   stateEmoji: {
     fontSize: 32,
     marginBottom: 12,
   },
   stateTitle: {
-    color: '#FFFFFF',
+    color: '#20392A',
     fontSize: 17,
     fontWeight: '800',
     textAlign: 'center',
   },
   stateText: {
-    color: '#AEB9C9',
+    color: '#788078',
     fontSize: 13,
     lineHeight: 20,
     textAlign: 'center',
     marginTop: 10,
   },
   retryButton: {
-    backgroundColor: '#7CFF6B',
+    backgroundColor: '#20583D',
     paddingHorizontal: 18,
     paddingVertical: 11,
     borderRadius: 12,
     marginTop: 18,
   },
   retryText: {
-    color: '#0B1220',
+    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 12,
   },
   footer: {
-    color: '#68778C',
+    color: '#89938B',
     fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
