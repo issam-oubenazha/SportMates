@@ -57,6 +57,7 @@ function AuthNavigation() {
         <Stack.Screen name="create-activity" options={{ headerShown: false }} />
         <Stack.Screen name="explore" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="racket-stats" options={{ headerShown: false }} />
         <Stack.Screen name="player/[id]" options={{ headerShown: false }} />
       </Stack>
     </View>

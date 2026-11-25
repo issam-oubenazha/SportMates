@@ -363,6 +363,23 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/racket-stats')}
+          style={({ pressed }) => [
+            styles.statsLink,
+            pressed && styles.pressed,
+          ]}
+        >
+          <View style={styles.statsLinkCopy}>
+            <Text style={styles.statsLinkTitle}>Mes stats Tennis & Padel</Text>
+            <Text style={styles.statsLinkSubtitle}>
+              Enregistre tes matchs et suis tes résultats.
+            </Text>
+          </View>
+          <Text style={styles.statsLinkArrow}>→</Text>
+        </Pressable>
+
         <View style={[styles.profileLayout, isWide && styles.wideLayout]}>
           <View style={[styles.heroCard, isWide && styles.wideHeroCard]}>
             <View style={styles.heroAccent} />
@@ -617,6 +634,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginTop: 6,
+  },
+  statsLink: {
+    minHeight: 76,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5EBE3',
+    borderRadius: 18,
+    paddingHorizontal: 17,
+    paddingVertical: 13,
+    marginBottom: 18,
+  },
+  statsLinkCopy: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  statsLinkTitle: {
+    color: '#20392A',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  statsLinkSubtitle: {
+    color: '#788078',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  statsLinkArrow: {
+    color: '#20583D',
+    fontSize: 22,
+    fontWeight: '800',
   },
   profileLayout: {
     gap: 16,
