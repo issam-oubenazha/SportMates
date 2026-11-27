@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -375,6 +375,24 @@ export default function ProfileScreen() {
             <Text style={styles.statsLinkTitle}>Mes stats Tennis & Padel</Text>
             <Text style={styles.statsLinkSubtitle}>
               Enregistre tes matchs et suis tes résultats.
+            </Text>
+          </View>
+          <Text style={styles.statsLinkArrow}>→</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/athlete-profile' as Href)}
+          style={({ pressed }) => [
+            styles.statsLink,
+            { marginTop: 12 },
+            pressed && styles.pressed,
+          ]}
+        >
+          <View style={styles.statsLinkCopy}>
+            <Text style={styles.statsLinkTitle}>Mon profil athlète</Text>
+            <Text style={styles.statsLinkSubtitle}>
+              Modifie tes informations sportives, objectifs et disponibilités.
             </Text>
           </View>
           <Text style={styles.statsLinkArrow}>→</Text>

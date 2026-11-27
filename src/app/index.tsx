@@ -8,31 +8,120 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/auth-context';
+import { supabase } from '../lib/supabase';
 
 const sports = [
   { emoji: '⚽', name: 'Football', hint: 'Trouve ton équipe' },
+  { emoji: '🎾', name: 'Tennis', hint: 'Trouve un partenaire' },
   { emoji: '🎾', name: 'Padel', hint: 'Réserve un match' },
   { emoji: '🏃', name: 'Running', hint: 'Cours à plusieurs' },
-  { emoji: '🏋️', name: 'Fitness', hint: 'Garde le rythme' },
+  { emoji: '🏋️', name: 'Gym / Fitness', hint: 'Garde le rythme' },
+  { emoji: '🏀', name: 'Basketball', hint: 'Trouve ton équipe' },
+  { emoji: '🏊', name: 'Swimming', hint: 'Plonge dans une session' },
+  { emoji: '🚴', name: 'Cycling', hint: 'Pars rouler à plusieurs' },
+  { emoji: '🏐', name: 'Volleyball', hint: 'Rejoins un match' },
+  { emoji: '🥋', name: 'Martial Arts', hint: 'Entraîne-toi avec ta team' },
+  { emoji: '✨', name: 'Other', hint: 'Découvre de nouvelles activités' },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { width } = useWindowDimensions();
+  const userId = session?.user.id;
+  const [interestedSports, setInterestedSports] = useState<string[]>([]);
+  const [goals, setGoals] = useState<string[]>([]);
+  const [personalGoal, setPersonalGoal] = useState('');
+  const [profileFirstName, setProfileFirstName] = useState('');
+  const [profileError, setProfileError] = useState('');
   const isWide = width >= 760;
   const fullName = session?.user.user_metadata?.full_name;
-  const firstName =
+  const metadataFirstName =
     typeof fullName === 'string'
       ? fullName.trim().split(/\s+/)[0] || 'SportMate'
       : 'SportMate';
+  const firstName = profileFirstName || metadataFirstName;
   const initial = firstName.charAt(0).toUpperCase();
 
   const goToActivities = () => router.push('/activities');
   const goToCreateActivity = () => router.push('/create-activity');
   const goToExplore = () => router.push('/explore');
   const goToProfile = () => router.push('/profile');
+  const recommendedSports = interestedSports.length
+    ? sports.filter((sport) => interestedSports.includes(sport.name)).slice(0, 4)
+    : sports.slice(0, 4);
+  const goalLabel = personalGoal || goals[0];
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAthletePreferences() {
+      if (!userId) return;
+      const [athleteResult, profileResult] = await Promise.all([
+        supabase
+          .from('athlete_profiles')
+          .select('profile_data')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle(),
+      ]);
+
+      if (!active) return;
+      if (athleteResult.error || profileResult.error) {
+        setProfileError(
+          athleteResult.error?.message ??
+            profileResult.error?.message ??
+            'Impossible de charger tes préférences.',
+        );
+        return;
+      }
+
+      setProfileError('');
+      const profileName = profileResult.data?.full_name;
+      setProfileFirstName(
+        typeof profileName === 'string'
+          ? profileName.trim().split(/\s+/)[0] ?? ''
+          : '',
+      );
+      const profileData = athleteResult.data?.profile_data;
+      if (typeof profileData !== 'object' || profileData === null) return;
+      const preferences = profileData as {
+        sports?: unknown;
+        goals?: unknown;
+        personalGoal?: unknown;
+      };
+      setInterestedSports(
+        Array.isArray(preferences.sports)
+          ? preferences.sports.filter(
+              (sport): sport is string => typeof sport === 'string',
+            )
+          : [],
+      );
+      setGoals(
+        Array.isArray(preferences.goals)
+          ? preferences.goals.filter(
+              (goal): goal is string => typeof goal === 'string',
+            )
+          : [],
+      );
+      setPersonalGoal(
+        typeof preferences.personalGoal === 'string'
+          ? preferences.personalGoal
+          : '',
+      );
+    }
+
+    void loadAthletePreferences();
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   return (
     <View style={styles.container}>
@@ -136,6 +225,25 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {goalLabel ? (
+          <View style={styles.goalCard}>
+            <Text style={styles.goalEyebrow}>TON CAP SPORTIF</Text>
+            <Text style={styles.goalText}>{goalLabel}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={goToProfile}
+              hitSlop={8}
+            >
+              <Text style={styles.goalLink}>Modifier mon profil →</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {profileError ? (
+          <Text accessibilityRole="alert" style={styles.profileError}>
+            Tes préférences ne sont pas disponibles : {profileError}
+          </Text>
+        ) : null}
+
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.sectionEyebrow}>PASSE À L’ACTION</Text>
@@ -190,7 +298,9 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.sectionEyebrow}>CHOISIS TON TERRAIN</Text>
-            <Text style={styles.sectionTitle}>Quel sport te tente ?</Text>
+            <Text style={styles.sectionTitle}>
+              {interestedSports.length ? 'Tes sports' : 'Quel sport te tente ?'}
+            </Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -202,7 +312,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sportsGrid}>
-          {sports.map((sport) => (
+          {recommendedSports.map((sport) => (
             <Pressable
               key={sport.name}
               accessibilityRole="button"
@@ -516,6 +626,39 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.3,
+  },
+  goalCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E7ECE5',
+    borderRadius: 18,
+    padding: 16,
+    marginTop: -14,
+    marginBottom: 30,
+  },
+  goalEyebrow: {
+    color: '#829086',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  goalText: {
+    color: '#20392A',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  goalLink: {
+    color: '#20583D',
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 9,
+  },
+  profileError: {
+    color: '#A22F2F',
+    fontSize: 12,
+    marginTop: -14,
+    marginBottom: 22,
   },
   actionGrid: {
     gap: 12,

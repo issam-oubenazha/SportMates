@@ -26,13 +26,19 @@ type Player = {
 const SPORTS = [
   'Tous',
   'Football',
-  'Basketball',
   'Tennis',
+  'Padel',
   'Running',
+  'Gym / Fitness',
   'Fitness',
+  'Basketball',
+  'Swimming',
   'Natation',
+  'Cycling',
   'Cyclisme',
   'Volleyball',
+  'Martial Arts',
+  'Other',
 ];
 
 export default function ExploreScreen() {
@@ -40,14 +46,16 @@ export default function ExploreScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isWide = width >= 820;
+  const userId = session?.user.id;
   const [players, setPlayers] = useState<Player[]>([]);
   const [search, setSearch] = useState('');
   const [selectedSport, setSelectedSport] = useState('Tous');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [preferenceError, setPreferenceError] = useState('');
 
   const loadPlayers = useCallback(async () => {
-    if (!session?.user) {
+    if (!userId) {
       setPlayers([]);
       setLoading(false);
       return;
@@ -57,17 +65,35 @@ export default function ExploreScreen() {
     setErrorMessage('');
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, city, favorite_sport, bio, avatar_url')
-        .neq('id', session.user.id)
-        .order('full_name', { ascending: true });
+      const [playersResult, profileResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, city, favorite_sport, bio, avatar_url')
+          .neq('id', userId)
+          .order('full_name', { ascending: true }),
+        supabase
+          .from('profiles')
+          .select('favorite_sport')
+          .eq('id', userId)
+          .maybeSingle(),
+      ]);
 
-      if (error) {
-        throw error;
+      if (playersResult.error) {
+        throw playersResult.error;
       }
 
-      setPlayers((data ?? []) as Player[]);
+      setPlayers((playersResult.data ?? []) as Player[]);
+      if (profileResult.error) {
+        setPreferenceError(profileResult.error.message);
+      } else {
+        setPreferenceError('');
+        const preferred = profileResult.data?.favorite_sport;
+        if (preferred && SPORTS.includes(preferred)) {
+          setSelectedSport((current) =>
+            current === 'Tous' ? preferred : current,
+          );
+        }
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -77,7 +103,7 @@ export default function ExploreScreen() {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     loadPlayers();
@@ -158,6 +184,11 @@ export default function ExploreScreen() {
       </View>
 
       <Text style={styles.filterLabel}>SPORT PRÉFÉRÉ</Text>
+      {preferenceError ? (
+        <Text style={{ color: '#A22F2F', fontSize: 11, marginBottom: 8 }}>
+          Ton sport favori n’a pas pu être chargé : {preferenceError}
+        </Text>
+      ) : null}
 
       <ScrollView
         horizontal
