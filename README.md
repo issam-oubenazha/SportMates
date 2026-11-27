@@ -16,6 +16,13 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Athlete profiles
+
+Apply `supabase/migrations/20261126200000_athlete_profiles.sql` to the Supabase
+project before running the app with authenticated users. The migration adds a
+private, resumable athlete profile with owner-only row-level security and does
+not alter or replace the existing public `profiles` table.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

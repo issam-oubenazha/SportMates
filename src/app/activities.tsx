@@ -40,6 +40,16 @@ type ActivityParticipant = {
 type ActivityList = 'all' | 'mine';
 type ActivityAvailability = 'open' | 'closed';
 
+function matchesPreferredSport(activitySport: string, preferredSport: string) {
+  if (!preferredSport) return false;
+  if (preferredSport === 'Gym / Fitness') {
+    return ['Gym', 'Fitness', 'Gym / Fitness'].includes(activitySport);
+  }
+  if (preferredSport === 'Swimming') return activitySport === 'Natation';
+  if (preferredSport === 'Cycling') return activitySport === 'Cyclisme';
+  return activitySport === preferredSport;
+}
+
 function isActivityInFuture(activity: SportActivity) {
   return new Date(activity.activity_date).getTime() >= Date.now();
 }
@@ -96,6 +106,8 @@ export default function ActivitiesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [preferredSport, setPreferredSport] = useState('');
+  const [preferenceError, setPreferenceError] = useState('');
 
   const loadActivities = useCallback(async () => {
     setErrorMessage('');
@@ -103,6 +115,21 @@ export default function ActivitiesScreen() {
     try {
       const activityColumns =
         'id, organizer_id, title, sport, city, location, activity_date, max_participants, description, status';
+
+      if (userId) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('favorite_sport')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profileError) {
+          setPreferenceError(profileError.message);
+        } else {
+          setPreferenceError('');
+          setPreferredSport(profile?.favorite_sport ?? '');
+        }
+      }
 
       const { data, error } = await supabase
         .from('activities')
@@ -474,9 +501,16 @@ export default function ActivitiesScreen() {
         : !isAcceptingParticipants;
     })
     .sort(
-      (first, second) =>
-        new Date(first.activity_date).getTime() -
-        new Date(second.activity_date).getTime()
+      (first, second) => {
+        const preferredOrder =
+          Number(matchesPreferredSport(second.sport, preferredSport)) -
+          Number(matchesPreferredSport(first.sport, preferredSport));
+        return (
+          preferredOrder ||
+          new Date(first.activity_date).getTime() -
+            new Date(second.activity_date).getTime()
+        );
+      }
     );
 
   const formatDate = (value: string) => {
@@ -498,6 +532,15 @@ export default function ActivitiesScreen() {
           <Text style={styles.subtitle}>
             L9a match wla activité qriba lik.
           </Text>
+          {preferenceError ? (
+            <Text style={{ color: '#A22F2F', fontSize: 10, marginTop: 4 }}>
+              Impossible de charger ton sport favori : {preferenceError}
+            </Text>
+          ) : preferredSport ? (
+            <Text style={{ color: '#66816D', fontSize: 10, marginTop: 4 }}>
+              Activités {preferredSport} affichées en premier.
+            </Text>
+          ) : null}
         </View>
 
         <Pressable
